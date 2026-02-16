@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Randi Photobooth Pro</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+body{
+  background: linear-gradient(135deg,#000428,#004e92);
+  color:white;
+  text-align:center;
+  overflow-x:hidden;
+}
+
+.screen{display:none;padding:20px}
+.active{display:block;animation:fade .5s}
+@keyframes fade{from{opacity:0;transform:scale(.95)}to{opacity:1}}
+
+button{
+  padding:12px 20px;
+  border:none;
+  border-radius:12px;
+  background:#00f0ff;
+  font-weight:bold;
+  margin:5px;
+}
+
+input{
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  margin-top:10px;
+}
+
+video{
+  width:95%;
+  max-width:420px;
+  border-radius:15px;
+  box-shadow:0 0 30px #00f0ff;
+}
+
+.count{
+  font-size:70px;
+  margin:10px;
+}
+
+.strip{
+  background:white;
+  color:black;
+  padding:15px;
+  border-radius:20px;
+  display:inline-block;
+}
+
+.strip img{
+  width:220px;
+  border-radius:10px;
+  margin:5px 0;
+}
+
+.flash{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:white;
+  opacity:0;
+  pointer-events:none;
+}
+
+.templates div{
+  background:white;
+  color:black;
+  padding:20px;
+  border-radius:12px;
+  margin:10px;
+}
+</style>
+</head>
+<body>
+
+<audio autoplay loop>
+<source src="https://files.catbox.moe/7p5f2h.mp3">
+</audio>
+
+<div class="flash" id="flash"></div>
+
+<!-- WELCOME -->
+<div id="welcome" class="screen active">
+  <h1>📸 RANDI PHOTOBOOTH</h1>
+  <p>Photobooth Viral 2026</p>
+  <input id="name" placeholder="Masukkan nama kamu">
+  <br>
+  <button onclick="next()">Masuk</button>
+</div>
+
+<!-- TEMPLATE -->
+<div id="template" class="screen">
+  <h2>Pilih Frame</h2>
+  <div class="templates">
+    <div onclick="setTheme('#ff9a9e')">Pink Cute</div>
+    <div onclick="setTheme('#000')">Dark Elegant</div>
+    <div onclick="setTheme('linear-gradient(90deg,red,orange,yellow,green,blue)')">Rainbow</div>
+  </div>
+</div>
+
+<!-- CAMERA -->
+<div id="cam" class="screen">
+  <h2>Ambil 4 Foto</h2>
+  <video id="video" autoplay></video>
+  <div class="count" id="count"></div>
+
+  <br>
+  <button onclick="shoot()">Mulai</button>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <h2>Hasil Kamu</h2>
+  <div class="strip" id="strip"></div>
+  <br>
+  <button onclick="download()">Download HD</button>
+  <button onclick="shareWA()">Share WhatsApp</button>
+  <button onclick="location.reload()">Ulangi</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+let user="Guest"
+let photos=[]
+let video=document.getElementById("video")
+let canvas=document.getElementById("canvas")
+let ctx=canvas.getContext("2d")
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"))
+  document.getElementById(id).classList.add("active")
+}
+
+function next(){
+  user=document.getElementById("name").value||"Guest"
+  show("template")
+}
+
+function setTheme(bg){
+  document.body.style.background=bg
+  startCam()
+  show("cam")
+}
+
+function startCam(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(s=>video.srcObject=s)
+}
+
+async function shoot(){
+  photos=[]
+  document.getElementById("strip").innerHTML=""
+  for(let i=0;i<4;i++){
+    await count(3)
+    snap()
+  }
+  show("result")
+}
+
+function count(n){
+  return new Promise(res=>{
+    let c=document.getElementById("count")
+    c.innerText=n
+    let i=setInterval(()=>{
+      n--
+      c.innerText=n>0?n:"📸"
+      if(n<0){clearInterval(i);c.innerText="";res()}
+    },1000)
+  })
+}
+
+function snap(){
+  flash()
+  canvas.width=video.videoWidth
+  canvas.height=video.videoHeight
+  ctx.drawImage(video,0,0)
+  let data=canvas.toDataURL()
+  photos.push(data)
+
+  let img=document.createElement("img")
+  img.src=data
+  document.getElementById("strip").appendChild(img)
+}
+
+function flash(){
+  let f=document.getElementById("flash")
+  f.style.opacity=1
+  setTimeout(()=>f.style.opacity=0,150)
+}
+
+function download(){
+  let final=document.createElement("canvas")
+  final.width=400
+  final.height=photos.length*420+120
+  let c=final.getContext("2d")
+
+  c.fillStyle="white"
+  c.fillRect(0,0,final.width,final.height)
+
+  photos.forEach((p,i)=>{
+    let img=new Image()
+    img.src=p
+    img.onload=()=>c.drawImage(img,100,i*420+20,200,350)
+  })
+
+  setTimeout(()=>{
+    c.fillStyle="black"
+    c.font="20px sans-serif"
+    c.fillText("Photobooth by Randi Store",80,final.height-40)
+    c.fillText(user,160,final.height-70)
+
+    let a=document.createElement("a")
+    a.download="randi-photobooth.png"
+    a.href=final.toDataURL()
+    a.click()
+  },500)
+}
+
+function shareWA(){
+  let text=`Lihat hasil photobooth aku 😈📸`
+  window.open("https://wa.me/?text="+encodeURIComponent(text))
+}
+</script>
+
+</body>
+</html>
